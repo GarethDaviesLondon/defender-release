@@ -12,8 +12,6 @@
 // the frame already fully resolved.
 
 import {
-  VIRTUAL_WIDTH,
-  VIRTUAL_HEIGHT,
   VIEW_WIDTH,
   WORLD_WIDTH,
   COLOURS,
@@ -26,6 +24,7 @@ import {
 } from './config/tuning.js';
 import { startLoop } from './core/loop.js';
 import { createInput } from './core/input.js';
+import { createTouch, combineInputs } from './core/touch.js';
 import { readIntent } from './core/intent.js';
 import { makeRng } from './core/rng.js';
 import {
@@ -36,6 +35,7 @@ import {
   deltaX,
 } from './core/world.js';
 import { createCamera, updateCamera, snapCamera } from './systems/camera.js';
+import { computeLayout } from './systems/layout.js';
 import { overlaps, withinView } from './systems/collision.js';
 import {
   waveComposition,
@@ -91,29 +91,98 @@ import { createBurst, updateParticle } from './entities/particles.js';
 import { drawWorld } from './render/renderer.js';
 import { drawScanner } from './render/scanner.js';
 import { drawHud, drawOverlays } from './render/hud.js';
+import { drawControls, drawRotatePrompt } from './render/controls.js';
 import { createAudio } from './audio/sfx.js';
 
 // --- Canvas ---------------------------------------------------------------
 
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d', { alpha: false });
-canvas.width = VIRTUAL_WIDTH;
-canvas.height = VIRTUAL_HEIGHT;
+
+// The canvas now fills the window rather than being a fixed 960 by 640 element,
+// and the game is drawn into a centred box inside it through a transform. Two
+// reasons. The surround is ours to draw into, which is where the touch controls
+// go; and the drawing modules keep working entirely in virtual coordinates, so
+// none of them had to change (functional spec, section 20).
+// Whether to show the on-screen controls is decided by what the player is
+// actually using, not by what the device is capable of. Plenty of laptops have
+// a touchscreen and report `maxTouchPoints > 0` while being driven entirely by
+// a keyboard, and drawing thumb pads for them is simply wrong.
+//
+// So: guess from the primary pointer, then let the first real input settle it.
+// Touch the screen and the controls appear; press a key and they go away.
+let showControls = (() => {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return 'ontouchstart' in window;
+  }
+})();
+
+function setControlsVisible(visible) {
+  if (showControls === visible) return;
+  showControls = visible;
+  game.isTouch = visible;
+  fitCanvas(); // the gutters change, so the game box does too
+}
+
+let layout = computeLayout(1, 1, { touch: showControls });
+let dpr = 1;
+
+/** The notch and the home indicator eat into the screen on a modern handset,
+ *  and in landscape the notch is on one side, exactly where a thumb goes. Read
+ *  the insets the browser reports rather than guessing at a device. */
+function safeAreaInsets() {
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;' +
+    'padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);' +
+    'padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);';
+  document.body.appendChild(probe);
+  const s = getComputedStyle(probe);
+  const px = (v) => (Number.parseFloat(v) || 0);
+  const insets = {
+    left: px(s.paddingLeft), right: px(s.paddingRight),
+    top: px(s.paddingTop), bottom: px(s.paddingBottom),
+  };
+  probe.remove();
+  return insets;
+}
 
 function fitCanvas() {
-  const scale = Math.min(
-    window.innerWidth / VIRTUAL_WIDTH,
-    window.innerHeight / VIRTUAL_HEIGHT,
-  );
-  canvas.style.width = `${Math.floor(VIRTUAL_WIDTH * scale)}px`;
-  canvas.style.height = `${Math.floor(VIRTUAL_HEIGHT * scale)}px`;
+  dpr = window.devicePixelRatio || 1;
+  const cssW = Math.max(1, window.innerWidth);
+  const cssH = Math.max(1, window.innerHeight);
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  // Layout is computed in CSS pixels; the device pixel ratio is folded into the
+  // transform at draw time. Touch coordinates arrive in CSS pixels too, so hit
+  // testing and drawing share one coordinate space.
+  layout = computeLayout(cssW, cssH, {
+    touch: showControls,
+    insets: showControls ? safeAreaInsets() : null,
+  });
 }
 window.addEventListener('resize', fitCanvas);
+window.addEventListener('orientationchange', fitCanvas);
 fitCanvas();
 
 // --- Game object ----------------------------------------------------------
 
-const input = createInput(window);
+const keyboard = createInput(window, {
+  onFirstKey: () => setControlsVisible(false),
+});
+// The touch source needs the current layout to know where the buttons are, and
+// the layout changes on every resize, so it is passed a getter rather than a
+// snapshot that would go stale.
+// The touch source is always created: its listeners cost nothing on a device
+// nobody touches, and it is what tells us a finger has arrived.
+const touch = createTouch(canvas, () => layout, {
+  onFirstTouch: () => setControlsVisible(true),
+});
+const input = combineInputs(keyboard, touch);
 const audio = createAudio();
 
 const game = {
@@ -135,6 +204,7 @@ const game = {
   baiterIn: Infinity,
   humanoidsAlive: 0,
   muted: audio.muted,
+  isTouch: showControls,
 };
 
 /** Enemies that must die for the wave to end. Baiters keep arriving for as
@@ -551,12 +621,32 @@ function resetGame() {
 // --- Render ---------------------------------------------------------------
 
 function render() {
+  // Screen space: clear the whole surround, including the gutters.
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = COLOURS.background;
-  ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+  ctx.fillRect(0, 0, layout.screenW, layout.screenH);
+
+  // A phone held upright gives the game a box too small to read, and this is a
+  // side-scroller. Say so rather than rendering something unplayable.
+  if (showControls && layout.screenH > layout.screenW) {
+    drawRotatePrompt(ctx, layout);
+    return;
+  }
+
+  // Game space: the drawing modules work in virtual coordinates and know
+  // nothing about any of this.
+  ctx.setTransform(
+    dpr * layout.scale, 0, 0, dpr * layout.scale,
+    dpr * layout.gameX, dpr * layout.gameY,
+  );
   drawWorld(ctx, game);
   drawScanner(ctx, game);
   drawHud(ctx, game);
   drawOverlays(ctx, game);
+
+  // Back to screen space for the controls, which live in the gutters.
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (showControls) drawControls(ctx, layout, touch);
 }
 
 startLoop(update, render);

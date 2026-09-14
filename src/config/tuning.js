@@ -224,6 +224,23 @@ export const FIXED_STEP = 1 / 60;
 export const MAX_ACCUMULATOR = 0.25; // clamp: trades strict determinism under a
                                      // slow frame for not freezing the tab
 
+// --- On-screen controls (functional spec, section 20) ---------------------
+//
+// Used only on a touch device. The gutters are reserved out of the letterboxing
+// that a phone in landscape already wastes, so on a typical handset the play
+// area does not shrink at all.
+
+export const CONTROLS = {
+  GUTTER_FRACTION: 0.15, // of screen width, before the clamps below
+  GUTTER_MIN: 72,
+  GUTTER_MAX: 190,
+  THUMB_DROP: 0.04, // lift the clusters off the very bottom edge
+  TOUCH_SLOP: 0.12, // of a gutter, added around every button: a fingertip is
+                    // far bigger than a pixel, and it hides what it touches
+  OPACITY: 0.28,
+  OPACITY_PRESSED: 0.6,
+};
+
 // --- Palette (functional spec, section 13) --------------------------------
 //
 // Defined once, here, never inline in draw code.
@@ -249,4 +266,7 @@ export const COLOURS = {
   hudDim: '#3d6b80',
   scannerBox: '#8899aa',
   flash: '#ffffff',
+  control: '#9ae6ff',
+  controlPressed: '#ffffff',
+  controlOn: '#4ade5c',
 };

@@ -39,7 +39,7 @@ const SWALLOW = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space',
 ]);
 
-export function createInput(target = window) {
+export function createInput(target = window, { onFirstKey } = {}) {
   const held = new Set();
   const pressedThisFrame = new Set();
   let anyKeyYet = false;
@@ -47,6 +47,7 @@ export function createInput(target = window) {
   function onKeyDown(e) {
     if (SWALLOW.has(e.code)) e.preventDefault();
     if (e.repeat) return; // auto-repeat is not a new press
+    if (!anyKeyYet && onFirstKey) onFirstKey();
     anyKeyYet = true;
     held.add(e.code);
     pressedThisFrame.add(e.code);

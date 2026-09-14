@@ -13,7 +13,17 @@ HTML5 Canvas and vanilla ES modules. No framework, no bundler, no build step, no
 images and no sound files: every shape is drawn from code and every sound is
 synthesised at runtime, so the whole payload is the source.
 
-## Controls
+## On a phone
+
+Open it in landscape and the on-screen controls appear: a four-way pad on the
+left for turning, climbing and diving, and fire, smart bomb and hyperspace on the
+right. `AUTO` holds the trigger down for you if you would rather use that thumb
+for flying.
+
+The controls sit in the bars either side of the picture, which a phone screen
+wastes anyway, so the game is no smaller for having them.
+
+## Controls on a keyboard
 
 | Action | Keys |
 | ------ | ---- |

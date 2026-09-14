@@ -68,7 +68,17 @@ export function drawOverlays(ctx, game) {
 
   switch (state.phase) {
     case Phase.ATTRACT:
-      centred(ctx, [
+      centred(ctx, game.isTouch ? [
+        { text: 'DEFENDER', font: BIG, colour: COLOURS.hud, dy: -90 },
+        { text: 'TAP TO START', font: MID, colour: COLOURS.ship, dy: -30 },
+        { text: 'left pad  turn, climb and dive', font: FONT, colour: COLOURS.hudDim, dy: 30 },
+        { text: 'right  fire, bomb, hyperspace', font: FONT, colour: COLOURS.hudDim, dy: 56 },
+        { text: 'AUTO holds the trigger down for you', font: FONT, colour: COLOURS.hudDim, dy: 82 },
+        {
+          text: 'save the humanoids. watch the scanner.',
+          font: FONT, colour: COLOURS.humanoid, dy: 126,
+        },
+      ] : [
         { text: 'DEFENDER', font: BIG, colour: COLOURS.hud, dy: -110 },
         {
           text: 'PRESS ENTER TO START',
@@ -93,7 +103,7 @@ export function drawOverlays(ctx, game) {
       dim(ctx);
       centred(ctx, [
         { text: 'PAUSED', font: BIG, colour: COLOURS.hud, dy: -20 },
-        { text: 'P TO RESUME', font: MID, colour: COLOURS.hudDim, dy: 30 },
+        { text: game.isTouch ? 'TAP II TO RESUME' : 'P TO RESUME', font: MID, colour: COLOURS.hudDim, dy: 30 },
       ]);
       break;
 
