@@ -52,9 +52,31 @@ ES modules need an HTTP origin, so serve this directory rather than opening
 python -m http.server 8000        # then http://127.0.0.1:8000/
 ```
 
+## Licence
+
+[The Unlicense](LICENSE): this code is released into the public domain. Copy it,
+change it, sell it, put it in something else. No attribution required, no
+conditions, no warranty. If your jurisdiction does not recognise a public domain
+dedication, the licence grants the same freedoms outright.
+
+If you are learning from it, the parts most worth reading are the wrapping world
+arithmetic in `src/core/world.js` and the fixed-timestep loop in
+`src/core/loop.js`. Both are small and both are where this kind of game usually
+goes wrong.
+
+## A note on the name
+
+*Defender* was made by Williams Electronics in 1980 and the name belongs to its
+owners. This is an unaffiliated homage, not a port and not an emulation: every
+line of code, every shape on the screen and every sound is original and generated
+at runtime. No original artwork, audio or ROM data is used or included. The
+licence above covers this code and cannot grant rights to anyone else's
+trademarks.
+
 ## About this repository
 
-This is the published build: `index.html` and `src/`, and nothing else. It is
+This is the published build: `index.html`, `src/` and the licence, and
+nothing else. It is
 generated from a separate development repository that holds the functional
 specification, the test suite and the working method. Fixes are made there and
 released here, so pull requests against this repository cannot be merged
