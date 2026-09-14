@@ -370,6 +370,10 @@ function update(dt) {
   game.state = advance(game.state, dt, game.pendingEvents);
   game.pendingEvents.length = 0;
 
+  // A new game rebuilds the world before its first wave. Resetting only on the
+  // way into ATTRACT missed a restart from GAME_OVER, which kept the lost
+  // planet, the dead humanoids and the old bombs (KI-08).
+  if (game.state.newGame) resetGame();
   if (game.state.startWave) startWave();
   if (game.state.respawn) {
     respawnShip(game.ship, game.camera.x);

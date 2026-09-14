@@ -34,13 +34,17 @@ export function createGameState() {
     // acts on it and it is cleared by the next advance.
     startWave: false,
     respawn: false,
+    // Set for one frame on every start. Start is accepted from GAME_OVER as
+    // well as ATTRACT, so the caller cannot infer a new game from the phase it
+    // left: it must rebuild the world whenever this is set (KI-08).
+    newGame: false,
   };
 }
 
 /** Apply events, then let time pass. Events are applied first so a death and
  *  the frame it happened in do not race. */
 export function advance(state, dt, events = []) {
-  let s = { ...state, startWave: false, respawn: false };
+  let s = { ...state, startWave: false, respawn: false, newGame: false };
   for (const event of events) s = applyEvent(s, event);
   return tick(s, dt);
 }
@@ -53,6 +57,7 @@ function applyEvent(s, event) {
         ...createGameState(),
         phase: Phase.PLAYING,
         startWave: true,
+        newGame: true,
       };
 
     case 'shipDestroyed': {
